@@ -1,0 +1,12 @@
+{% extends "default_layout.html" %}
+{% block body %}
+<h1>{{ title }}</h1>
+<h2>{{ name }} v{{ version }}</h2>
+<div class="btn-group-vertical" role="group" aria-label="buttons">
+  <a class="btn btn-success btn-lg" href="{{ url_for('send') }}" role="button">Send Command &gt;&gt;</a>
+  <a class="btn btn-danger btn-lg" href="{{ url_for('send') }}" role="button">Send Command &gt;&gt;</a>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('send') }}" role="button">Send Command &gt;&gt;</a>
+  <a class="btn btn-secondary btn-lg" href="{{ url_for('show', page='index') }}" role="button">Croak</a>
+</div>
+<p>&nbsp;</p>
+{% endblock %}

@@ -5,11 +5,17 @@ name = "pypi"
 
 [packages]
 mcrcon = "*"
+flask-wtf = "*"
+quart = {extras = ["dotenv"], version = "*"}
+uvicorn = "*"
+pipenv-setup = {ref = "master", git = "https://github.com/Madoshakalaka/pipenv-setup"}
 
 [dev-packages]
+ecorcon = {editable = true, path = "."}
 
 [requires]
 python_version = "3.11"
 
 [scripts]
-main = "python main.py"
+webdev = "uvicorn src.ecorcon.web:app --reload"
+webtest = "python -m ecorcon"
