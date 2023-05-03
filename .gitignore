@@ -154,3 +154,4 @@ Thumbs.db
 *.rdb
 *.sock
 .env
+.passwd*

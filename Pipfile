@@ -9,6 +9,8 @@ flask-wtf = "*"
 quart = {extras = ["dotenv"], version = "*"}
 uvicorn = "*"
 pipenv-setup = {ref = "master", git = "https://github.com/Madoshakalaka/pipenv-setup"}
+quart-auth = "*"
+argon2-cffi = "*"
 
 [dev-packages]
 ecorcon = {editable = true, path = "."}

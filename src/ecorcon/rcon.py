@@ -50,6 +50,8 @@ async def get_rcon_commands(*args, **kwargs
 ) -> tuple[bool, list[tuple] | str]:
   """Get RCON Commands"""
   return (True, [
+    ("", """<EMPTY COMMAND> (send a RAW Commmand in the arguments \
+textbox below"""),
     ("/help", """/help (/?) -- Displays all the commands available \
 with hidden subcommands. Accepts a string to filter commands to a \
 search string."""),
@@ -62,4 +64,10 @@ reports and dump to files. Optionally pass duration in seconds, \
 defaults to 60 seconds."""),
     ("/profiler", """/profiler -- Shows commands to profile the server \
 and generate diagnostic data."""),
+    ("/teleport", """/teleport -- List of different teleportation \
+commands"""),
+    ("/teleport atob", """/teleport atob -- Teleports player A to \
+player B"""),
+    ("/teleport targetto", """/teleport targetto -- Teleports \
+otherPlayer to an xyz coordinate"""),
   ])
