@@ -155,3 +155,4 @@ Thumbs.db
 *.sock
 .env
 .passwd*
+Dump/

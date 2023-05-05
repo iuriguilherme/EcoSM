@@ -35,6 +35,7 @@ from quart_auth import (
 import secrets
 import shutil
 import subprocess
+from subprocess import Popen
 from wtforms import (
   Form,
   # ~ HiddenField,
@@ -65,7 +66,7 @@ app: Quart = Quart(__name__)
 app.secret_key: str = secrets.token_urlsafe(32)
 AuthManager(app)
 
-eco: Process = get_process()
+eco: Popen | None = None
 
 # ~ eco_coroutine: object = asyncio.create_subprocess_exec(get_path())
 # ~ eco_process: Process | None = None
@@ -182,9 +183,12 @@ async def manager() -> str:
         return jsonify(repr(e))
     alive: bool = False
     try:
-      alive: bool = eco.is_alive()
-    except ValueError:
+      alive: bool = (eco.poll() is None)
+    except (ValueError, AttributeError):
       pass
+    except Exception as e:
+      logger.exception(e)
+      # ~ pass
     return await render_template(
       "manager.html",
       name = name,
