@@ -13,11 +13,14 @@ from quart import (
 )
 from flask_wtf import FlaskForm
 
+import asyncio
+# ~ from asyncio.subprocess import Process
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from configparser import ConfigParser, NoSectionError
 from datetime import datetime
 from jinja2 import TemplateNotFound
+from multiprocessing import Process
 import logging
 import os
 from quart_auth import (
@@ -31,6 +34,7 @@ from quart_auth import (
 )
 import secrets
 import shutil
+import subprocess
 from wtforms import (
   Form,
   # ~ HiddenField,
@@ -43,14 +47,28 @@ from wtforms import (
   TextAreaField,
 )
 from .rcon import get_mcr, get_rcon_commands, rcon_send
+from .manager import (
+  get_path,
+  get_subprocess,
+  get_process,
+  eco_status,
+  eco_start,
+  eco_stop,
+  eco_restart,
+)
 from . import name, version
 
 logging.basicConfig(level = "INFO")
 logger: logging.Logger = logging.getLogger(__name__)
 
 app: Quart = Quart(__name__)
-app.secret_key = secrets.token_urlsafe(32)
+app.secret_key: str = secrets.token_urlsafe(32)
 AuthManager(app)
+
+eco: Process = get_process()
+
+# ~ eco_coroutine: object = asyncio.create_subprocess_exec(get_path())
+# ~ eco_process: Process | None = None
 
 class LoginForm(FlaskForm):
   username_field = StringField("Username", default = "Arend")
@@ -76,9 +94,9 @@ async def show(page):
     logger.exception(e)
     return jsonify(repr(e))
 
-@app.route("/send", methods = ['GET', 'POST'])
-@login_required
-async def send():
+@app.route("/rcon", methods = ['GET', 'POST'])
+# ~ @login_required
+async def rcon() -> str:
   """Send RCON Command"""
   try:
     class CommandForm(FlaskForm):
@@ -115,12 +133,66 @@ async def send():
         logger.exception(e)
         return jsonify(repr(e))
     return await render_template(
-      "send.html",
+      "rcon.html",
       name = name,
       version = version,
-      title = "Send Command",
+      title = "Remote Console",
       form = form,
       response = response,
+    )
+  except Exception as e:
+    logger.exception(e)
+    return jsonify(repr(e))
+
+@app.route("/manager", methods = ['GET', 'POST'])
+# ~ @login_required
+async def manager() -> str:
+  """Manage server process"""
+  global eco
+  try:
+    function_map: dict = {
+      "0": eco_status,
+      "1": eco_start,
+      "2": eco_stop,
+      "3": eco_restart,
+    }
+    class ManagerForm(FlaskForm):
+      command_field = RadioField(
+        "select command",
+        choices = [
+          ("0", "Server Status"),
+          ("1", "Start Server"),
+          ("2", "Stop Server"),
+          ("3", "Restart Server"),
+        ],
+      )
+      submit = SubmitField("Send")
+    response: str | None = None
+    form: FlaskForm = ManagerForm(formdata = await request.form)
+    if request.method == "POST":
+      try:
+        status, eco, response = await function_map[
+          form['command_field'].data](
+            # ~ eco_coroutine,
+            # ~ eco_process,
+            eco,
+          )
+      except Exception as e:
+        logger.exception(e)
+        return jsonify(repr(e))
+    alive: bool = False
+    try:
+      alive: bool = eco.is_alive()
+    except ValueError:
+      pass
+    return await render_template(
+      "manager.html",
+      name = name,
+      version = version,
+      title = "Server Manager",
+      form = form,
+      response = response,
+      alive = alive,
     )
   except Exception as e:
     logger.exception(e)
@@ -197,6 +269,7 @@ login still didn't work. Go figure."
     return jsonify(repr(e))
 
 @app.route("/register", methods = ['GET', 'POST'])
+# ~ @login_required
 async def register() -> str:
   """Register Form"""
   try:

@@ -15,9 +15,9 @@ async def get_mcr(*args, **kwargs) -> MCRcon | None:
   try:
     config: ConfigParser = ConfigParser()
     config.read("config.ini")
-    server = config["eco"]["server"]
-    password = config["eco"]["password"]
-    port: int(config["eco"]["port"])
+    server = config["rcon"]["server"]
+    password = config["rcon"]["password"]
+    port: int(config["rcon"]["port"])
     mcr: MCRcon = MCRcon(server, password, port = port)
     return mcr
   except Exception as e:

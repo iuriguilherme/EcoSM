@@ -56,7 +56,12 @@ MA 02110-1301, USA.
           <a class="nav-link" href="{{ url_for('show') }}">Home</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('send') }}">Send Command</a>
+          <a class="nav-link"
+            href="{{ url_for('rcon') }}">Remote Console</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link"
+            href="{{ url_for('manager') }}">Server Manager</a>
         </li>
         <li class="nav-item">
           <a class="nav-link disabled">|</a>

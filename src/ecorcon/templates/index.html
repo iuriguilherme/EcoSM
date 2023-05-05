@@ -3,10 +3,16 @@
 <h1>{{ title }}</h1>
 <h2>{{ name }} v{{ version }}</h2>
 <div class="btn-group-vertical" role="group" aria-label="buttons">
-  <a class="btn btn-success btn-lg" href="{{ url_for('login') }}" role="button">Login &gt;&gt;</a>
-  <a class="btn btn-danger btn-lg" href="{{ url_for('logout') }}" role="button">Logout &gt;&gt;</a>
-  <a class="btn btn-primary btn-lg" href="{{ url_for('send') }}" role="button">Send Command &gt;&gt;</a>
-  <a class="btn btn-secondary btn-lg" href="{{ url_for('show', page='index') }}" role="button">Croak</a>
+  <a class="btn btn-success btn-lg" role="button"
+    href="{{ url_for('login') }}">Login &gt;&gt;</a>
+  <a class="btn btn-danger btn-lg" role="button"
+    href="{{ url_for('logout') }}">Logout &gt;&gt;</a>
+  <a class="btn btn-primary btn-lg" role="button"
+    href="{{ url_for('rcon') }}">Remote Console (RCON) &gt;&gt;</a>
+  <a class="btn btn-warning btn-lg" role="button"
+    href="{{ url_for('manager') }}">Server Manager &gt;&gt;</a>
+  <a class="btn btn-secondary btn-lg" role="button"
+    href="{{ url_for('show', page='index') }}">Croak</a>
 </div>
 <p>&nbsp;</p>
 {% endblock %}
