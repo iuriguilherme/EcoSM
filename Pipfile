@@ -19,5 +19,6 @@ ecorcon = {editable = true, path = "."}
 python_version = "3.11"
 
 [scripts]
-webdev = "uvicorn src.ecorcon.web:app --reload"
-webtest = "python -m ecorcon"
+development = "uvicorn src.ecorcon.web:app --reload"
+testing = "python -m ecorcon"
+production = "python -m ecorcon"

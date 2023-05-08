@@ -4,7 +4,7 @@ from configparser import ConfigParser
 import logging
 from mcrcon import MCRcon
 
-logging.basicConfig(level = "INFO")
+# ~ logging.basicConfig(level = "INFO")
 logger: logging.Logger = logging.getLogger(__name__)
 
 async def get_mcr(*args, **kwargs) -> MCRcon | None:

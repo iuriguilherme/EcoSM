@@ -4,22 +4,23 @@
 from configparser import ConfigParser
 import logging
 # ~ from asyncio.subprocess import Process
-from multiprocessing import Process
+# ~ from multiprocessing import Process
 import os
 import signal
 import subprocess
 from subprocess import Popen
+import sys
 
-logging.basicConfig(level = "INFO")
+# ~ logging.basicConfig(level = "INFO")
 logger: logging.Logger = logging.getLogger(__name__)
 
 def get_path(*args, **kwargs) -> str | None:
   """Configuration for server manager"""
   try:
-    # ~ config: ConfigParser = ConfigParser()
-    # ~ config.read("config.ini")
-    # ~ return config["server"].get("path")
-    return r"C:\Windows\notepad.exe"
+    config: ConfigParser = ConfigParser()
+    config.read("config.ini")
+    return config["server"].get("path")
+    # ~ return r"C:\Windows\notepad.exe"
   except Exception as e:
     logger.exception(e)
   return None
@@ -31,18 +32,37 @@ def get_subprocess(*args, **kwargs) -> None:
   except Exception as e:
     logger.exception(e)
 
-def get_process(*args, **kwargs) -> Process:
-  """Get Process"""
-  # ~ return Process(target = get_subprocess)
-  return Process(target = get_path)
+# ~ def get_process(*args, **kwargs) -> Process | None:
+  # ~ """Get Process"""
+  # ~ try:
+    # ~ return Process(target = get_path)
+  # ~ except Exception as e:
+    # ~ logger.exception(e)
+  # ~ return None
+
+async def send_signal(
+  eco: Popen,
+  _signal: int,
+  *args,
+  **kwargs,
+) -> tuple[bool, str]:
+  """Send signal to subprocess"""
+  exception: Exception | None = None
+  try:
+    return (True, eco, f"Signal sent\n{eco.send_signal(_signal)}")
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to send signal to server!\n{repr(exception)}")
 
 async def eco_status(
   # ~ eco_coroutine: object,
   # ~ eco_process: Process,
-  eco: Process,
+  eco: Popen,
   *args,
   **kwargs,
-) -> tuple[bool, str]:
+) -> tuple[bool, Popen, str]:
   """Returns server status"""
   exception: Exception | None = None
   try:
@@ -61,73 +81,118 @@ async def eco_status(
 async def eco_start(
   # ~ eco_coroutine: object,
   # ~ eco_process: Process,
-  eco: Process,
+  eco: Popen,
   *args,
   **kwargs,
-) -> tuple[bool, str]:
+) -> tuple[bool, Popen, str]:
   """Starts server if not started"""
   exception: Exception | None = None
   try:
-    ## asyncio.subprocess
-    # ~ eco_process: Process = await eco_coroutine
-    # ~ await eco_process.wait()
-    ## multiprocessing.Process
-    # ~ eco.start()
-    ## subprocess.Popen
     path: str = get_path()
-    eco: Popen = Popen(
-      [path],
-      creationflags = subprocess.CREATE_NEW_PROCESS_GROUP,
-      cwd = os.path.dirname(os.path.realpath(path)),
-    )
-    return (True, eco, "Server started")
+    if sys.platform.startswith('win32'):
+      eco: Popen = Popen(
+        [path],
+        cwd = os.path.dirname(os.path.realpath(path)),
+        creationflags = \
+          subprocess.CREATE_NEW_CONSOLE | \
+          subprocess.CREATE_NEW_PROCESS_GROUP \
+        ,
+      )
+    else:
+      eco: Popen = Popen([path])
+    return (True, eco, f"Server started!\n{repr(eco)}")
   except Exception as e:
     logger.exception(e)
     exception = e
-  return (False, eco, f"""Server is probably already started!\n\
-{repr(exception)}""")
+  return (False, eco,
+    f"Server is probably already started!\n{repr(exception)}")
 
-async def eco_stop(
-  # ~ eco_coroutine: object,
-  # ~ eco_process: Process,
-  eco: Process,
+async def eco_wait_stop(
+  eco: Popen,
   *args,
   **kwargs,
-) -> tuple[bool, str]:
+) -> tuple[bool, Popen, str]:
   """Stops server if started"""
   exception: Exception | None = None
   try:
-    ## asyncio.subprocess
-    # ~ await eco_process.terminate()
-    ## multiprocessing.Process
-    # ~ eco.terminate()
-    # ~ eco.join()
-    # ~ eco.close()
-    # ~ eco: Process = get_process()
-    ## subprocess.Popen
-    eco.send_signal(signal.CTRL_C_EVENT)
+    await eco_stop(eco, *args, **kwargs)
     return (True, eco, f"Server stopped\n{eco.communicate()}")
   except Exception as e:
     logger.exception(e)
     exception = e
-  return (False, eco, f"""Failed to stop server!\n{repr(exception)}""")
+  return (False, eco,
+    f"Failed to stop server!\n{repr(exception)}")
 
-async def eco_restart(
-  # ~ eco_coroutine: object,
-  # ~ eco_process: Process,
-  eco: Process,
+async def eco_stop(
+  eco: Popen,
   *args,
   **kwargs,
-) -> tuple[bool, Process, str]:
+) -> tuple[bool, Popen, str]:
+  """Stops server if started"""
+  exception: Exception | None = None
+  try:
+    return (True, eco, f"Server Terminated\n{eco.terminate()}")
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to Terminate server!\n{repr(exception)}")
+
+async def eco_restart(
+  eco: Popen,
+  *args,
+  **kwargs,
+) -> tuple[bool, Popen, str]:
   """Performs a stop then a start"""
   exception: Exception | None = None
   try:
     return await eco_start(
-      (await eco_stop(eco, *args, **kwargs))[1],
+      (await eco_wait_stop(eco, *args, **kwargs))[1],
       *args,
       **kwargs,
     )
   except Exception as e:
     logger.exception(e)
     exception = e
-  return (False, eco, f"Failed to restart server!\n{repr(exception)}")
+  return (False, eco,
+    f"Failed to restart server!\n{repr(exception)}")
+
+async def send_ctrlc(
+  eco: Popen,
+  *args,
+  **kwargs,
+) -> tuple[bool, Popen, str]:
+  """Send CTRL+C to subprocess"""
+  exception: Exception | None = None
+  try:
+    _signal: int = 0
+    if sys.platform.startswith("win32"):
+      _signal = signal.CTRL_C_EVENT
+    else:
+      _signal = signal.SIGINT
+    return await send_signal(eco, _signal, *args, **kwargs)
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to send signal to server!\n{repr(exception)}")
+
+async def send_break(
+  eco: Popen,
+  *args,
+  **kwargs,
+) -> tuple[bool, Popen, str]:
+  """Send CTRL+BREAK to subprocess"""
+  exception: Exception | None = None
+  try:
+    _signal: int = 0
+    if sys.platform.startswith("win32"):
+      _signal = signal.CTRL_BREAK_EVENT
+    else:
+      _signal = signal.SIGBREAK
+    return await send_signal(eco, _signal, *args, **kwargs)
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to send signal to server!\n{repr(exception)}")

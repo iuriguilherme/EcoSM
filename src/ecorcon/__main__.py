@@ -1,8 +1,8 @@
-"""Script for production / testing"""
+"""Script for staging / testing / development"""
 
 import logging
 
-logging.basicConfig(level = "INFO")
+# ~ logging.basicConfig(level = "INFO")
 logger = logging.getLogger(__name__)
 
 try:

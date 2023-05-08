@@ -21,22 +21,23 @@ MA 02110-1301, USA.
 
 import logging
 
-logging.basicConfig(level = "INFO")
-logger = logging.getLogger(__name__)
-
 name: str = 'ecorcon'
 description: str = "Remote Console for Eco"
 version: str = '0.0.0'
+
+__name__: str = name
+
+logging.basicConfig(level = "INFO")
+logger = logging.getLogger(__name__)
 
 try:
   from . import _version
   version: str = _version.__version__
 except Exception as e:
+  logger.exception(e)
   logger.debug(f"""Unable to get version from _version file, using \
 {version}""")
-  # ~ logger.exception(e)
 
-__name__: str = name
 __version__: str = version
 __description__: str = description
 
@@ -44,6 +45,7 @@ __all__: list = [
   __name__,
   __version__,
   __description__,
+  'manager',
   'rcon',
   'web',
 ]

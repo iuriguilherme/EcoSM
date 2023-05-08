@@ -30,7 +30,13 @@
 <hr>
 {% endif %}
 <p>&nbsp;</p>
-<p>Admin commands:<br />
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-info text-dark mb-3 shadow-sm">
+<div class="card-body">
+<h3>Admin commands:</h3>
+<p>
 /chat -- Shows Commands related to chat.<br />
 /districts -- Shows commands related to user-defined districts.<br />
 /initialspawn -- Controls initial spawn.<br />
@@ -58,4 +64,10 @@ subcommands. Accepts a string to filter commands to a search string.
 /time -- List of commands for time operating<br />
 /util -- List of some helping commands<br />
 </p>
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<p>&nbsp;</p>
 {% endblock %}

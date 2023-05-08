@@ -51,15 +51,17 @@ from .rcon import get_mcr, get_rcon_commands, rcon_send
 from .manager import (
   get_path,
   get_subprocess,
-  get_process,
   eco_status,
   eco_start,
   eco_stop,
   eco_restart,
+  eco_wait_stop,
+  send_break,
+  send_ctrlc,
 )
 from . import name, version
 
-logging.basicConfig(level = "INFO")
+# ~ logging.basicConfig(level = "INFO")
 logger: logging.Logger = logging.getLogger(__name__)
 
 app: Quart = Quart(__name__)
@@ -154,8 +156,11 @@ async def manager() -> str:
     function_map: dict = {
       "0": eco_status,
       "1": eco_start,
-      "2": eco_stop,
-      "3": eco_restart,
+      "2": send_ctrlc,
+      "3": send_break,
+      "4": eco_stop,
+      "5": eco_wait_stop,
+      "6": eco_restart,
     }
     class ManagerForm(FlaskForm):
       command_field = RadioField(
@@ -163,8 +168,11 @@ async def manager() -> str:
         choices = [
           ("0", "Server Status"),
           ("1", "Start Server"),
-          ("2", "Stop Server"),
-          ("3", "Restart Server"),
+          ("2", "Send CTRL+C to Server"),
+          ("3", "Send CTRL+BREAK to Server"),
+          ("4", "Attempt Soft Stop"),
+          ("5", "Force Hard Stop"),
+          ("6", "Restart Server"),
         ],
       )
       submit = SubmitField("Send")

@@ -142,6 +142,7 @@ Thumbs.db
 # Geany
 *.geany
 
+# ecorcon
 *.txt
 !requirements.txt
 !CHANGES.txt
@@ -156,3 +157,4 @@ Thumbs.db
 .env
 .passwd*
 Dump/
+Logs/
