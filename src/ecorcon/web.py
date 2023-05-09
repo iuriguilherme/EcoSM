@@ -51,17 +51,16 @@ from .rcon import get_mcr, get_rcon_commands, rcon_send
 from .manager import (
   get_path,
   get_subprocess,
+  eco_proper_stop,
+  eco_restart,
   eco_status,
   eco_start,
   eco_stop,
-  eco_restart,
-  eco_wait_stop,
   send_break,
   send_ctrlc,
 )
 from . import name, version
 
-# ~ logging.basicConfig(level = "INFO")
 logger: logging.Logger = logging.getLogger(__name__)
 
 app: Quart = Quart(__name__)
@@ -69,9 +68,6 @@ app.secret_key: str = secrets.token_urlsafe(32)
 AuthManager(app)
 
 eco: Popen | None = None
-
-# ~ eco_coroutine: object = asyncio.create_subprocess_exec(get_path())
-# ~ eco_process: Process | None = None
 
 class LoginForm(FlaskForm):
   username_field = StringField("Username", default = "Arend")
@@ -158,21 +154,22 @@ async def manager() -> str:
       "1": eco_start,
       "2": send_ctrlc,
       "3": send_break,
-      "4": eco_stop,
-      "5": eco_wait_stop,
+      "4": eco_proper_stop,
+      "5": eco_stop,
       "6": eco_restart,
     }
     class ManagerForm(FlaskForm):
       command_field = RadioField(
         "select command",
         choices = [
-          ("0", "Server Status"),
-          ("1", "Start Server"),
-          ("2", "Send CTRL+C to Server"),
-          ("3", "Send CTRL+BREAK to Server"),
-          ("4", "Attempt Soft Stop"),
-          ("5", "Force Hard Stop"),
-          ("6", "Restart Server"),
+          ("0", "Eco Server Status"),
+          ("1", "Start Eco Server"),
+          ("4", "Stop Eco Server"),
+          ("6", "Restart Eco Server - the proper way(tm)"),
+          ("5", """Advanced - Forcefully Hard Stop (may mess up and \
+require windows server restart)"""),
+          ("2", "Advanced - Send CTRL+C to Server"),
+          ("3", "Advanced - Send CTRL+BREAK to Server"),
         ],
       )
       submit = SubmitField("Send")
