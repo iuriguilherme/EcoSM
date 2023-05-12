@@ -13,8 +13,6 @@ from quart import (
 )
 from flask_wtf import FlaskForm
 
-import asyncio
-# ~ from asyncio.subprocess import Process
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from configparser import ConfigParser, NoSectionError
@@ -56,6 +54,8 @@ from .manager import (
   eco_status,
   eco_start,
   eco_stop,
+  reboot_hard,
+  reboot_soft,
   send_break,
   send_ctrlc,
 )
@@ -157,6 +157,8 @@ async def manager() -> str:
       "4": eco_proper_stop,
       "5": eco_stop,
       "6": eco_restart,
+      "7": reboot_soft,
+      "8": reboot_hard,
     }
     class ManagerForm(FlaskForm):
       command_field = RadioField(
@@ -166,8 +168,10 @@ async def manager() -> str:
           ("1", "Start Eco Server"),
           ("4", "Stop Eco Server"),
           ("6", "Restart Eco Server - the proper way(tm)"),
+          ("7", "Restart Windows Server Gracefully"),
           ("5", """Advanced - Forcefully Hard Stop (may mess up and \
 require windows server restart)"""),
+          ("8", "Advanced - Force Windows Restart"),
           ("2", "Advanced - Send CTRL+C to Server"),
           ("3", "Advanced - Send CTRL+BREAK to Server"),
         ],

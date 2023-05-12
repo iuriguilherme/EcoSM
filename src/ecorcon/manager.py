@@ -43,6 +43,22 @@ async def send_signal(
   return (False, eco,
     f"Failed to send signal to server!\n{repr(exception)}")
 
+async def send_system(
+  eco: Popen,
+  command: str,
+  *args,
+  **kwargs,
+) -> tuple[bool, str]:
+  """Send command to Operational System"""
+  exception: Exception | None = None
+  try:
+    return (True, eco, f"Command sent\n{os.system(command)}")
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to send command to system!\n{repr(exception)}")
+
 async def eco_status(
   eco: Popen,
   *args,
@@ -186,3 +202,47 @@ async def send_break(
     exception = e
   return (False, eco,
     f"Failed to send signal to server!\n{repr(exception)}")
+
+async def reboot_soft(
+  eco: Popen,
+  *args,
+  **kwargs,
+) -> tuple[bool, Popen, str]:
+  """Send reboot signal with one minute timeout to Operational system"""
+  try:
+      if sys.platform.startswith('win32'):
+        return await send_system(eco, "shutdown /t 60", *args,
+          **kwargs)
+      elif sys.platform.startswith('linux'):
+        return await send_system(eco, "shutdown -r 60", *args,
+          **kwargs)
+      else:
+        return (False, eco,
+          "Couldn't reboot system because I don't know how :(")
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to send command to server!\n{repr(exception)}")
+
+async def reboot_hard(
+  eco: Popen,
+  *args,
+  **kwargs,
+) -> tuple[bool, Popen, str]:
+  """Send forceful reboot to Operational system"""
+  try:
+      if sys.platform.startswith('win32'):
+        return await send_system(eco, "shutdown /t 0 /f", *args,
+          **kwargs)
+      elif sys.platform.startswith('linux'):
+        return await send_system(eco, "shutdown -r now", *args,
+          **kwargs)
+      else:
+        return (False, eco,
+          "Couldn't reboot system because I don't know how :(")
+  except Exception as e:
+    logger.exception(e)
+    exception = e
+  return (False, eco,
+    f"Failed to send command to server!\n{repr(exception)}")
