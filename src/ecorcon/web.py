@@ -13,6 +13,7 @@ from quart import (
 )
 from flask_wtf import FlaskForm
 
+import asyncio
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from configparser import ConfigParser, NoSectionError
@@ -69,6 +70,17 @@ AuthManager(app)
 
 eco: Popen | None = None
 
+# ~ asyncio.get_running_loop().create_task(eco_start(
+  # ~ eco)).result()[1]
+
+@app.before_serving
+async def startup():
+  # ~ loop = asyncio.get_event_loop()
+  global eco
+  status, eco, message = await eco_start(eco)
+  if not status:
+    logger.warning(message)
+
 class LoginForm(FlaskForm):
   username_field = StringField("Username", default = "Arend")
   password_field = PasswordField("Password")
@@ -123,10 +135,14 @@ async def rcon() -> str:
         ## TODO: parse arguments in rcon module (for example, validate 
         ## arguments separated by comma, get players list with another
         ## rcon command, etc.
-        command: tuple = await rcon_send(' '.join([
-          form['command_field'].data,
-          form['arguments_field'].data,
-        ]))
+        if form['command_field'].data not in [None, '', ' ']:
+          command: tuple = await rcon_send(' '.join([
+            form['command_field'].data,
+            form['arguments_field'].data,
+          ]))
+        else: 
+          command: tuple = await rcon_send(
+            form['arguments_field'].data)
         response = command[1]
       except Exception as e:
         logger.exception(e)
@@ -152,13 +168,11 @@ async def manager() -> str:
     function_map: dict = {
       "0": eco_status,
       "1": eco_start,
-      "2": send_ctrlc,
-      "3": send_break,
-      "4": eco_proper_stop,
+      "2": eco_proper_stop,
+      "3": eco_restart,
+      "4": reboot_soft,
       "5": eco_stop,
-      "6": eco_restart,
-      "7": reboot_soft,
-      "8": reboot_hard,
+      "6": reboot_hard,
     }
     class ManagerForm(FlaskForm):
       command_field = RadioField(
@@ -166,14 +180,11 @@ async def manager() -> str:
         choices = [
           ("0", "Eco Server Status"),
           ("1", "Start Eco Server"),
-          ("4", "Stop Eco Server"),
-          ("6", "Restart Eco Server - the proper way(tm)"),
-          ("7", "Restart Windows Server Gracefully"),
-          ("5", """Advanced - Forcefully Hard Stop (may mess up and \
-require windows server restart)"""),
-          ("8", "Advanced - Force Windows Restart"),
-          ("2", "Advanced - Send CTRL+C to Server"),
-          ("3", "Advanced - Send CTRL+BREAK to Server"),
+          ("2", "Stop Eco Server"),
+          ("3", "Restart Eco Server"),
+          ("4", "Restart Windows Server"),
+          ("5", "Advanced - Force Eco Server Stop"),
+          ("6", "Advanced - Force Windows Restart"),
         ],
       )
       submit = SubmitField("Send")

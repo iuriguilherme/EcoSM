@@ -55,7 +55,8 @@ textbox below"""),
     ("/help", """/help (/?) -- Displays all the commands available \
 with hidden subcommands. Accepts a string to filter commands to a \
 search string."""),
-    ("/helpful", "/helpful -- Shows all help, including sub commands."),
+    # ~ ("/helpful",
+      # ~ "/helpful -- Shows all help, including sub commands."),
     # ~ ("/chat", "/chat -- Shows Commands related to chat."),
     # ~ ("/districts", """/districts -- Shows commands related to \
 # ~ user-defined districts."""),

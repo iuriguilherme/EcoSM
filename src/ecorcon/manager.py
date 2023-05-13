@@ -72,7 +72,7 @@ async def eco_status(
     else:
       return (False, eco, "Looks like server is not running :(")
   except AttributeError:
-    return (False, eco, f"Server is down\n{repr(e)}")
+    return (False, eco, f"Server is down")
   except Exception as e:
     logger.exception(e)
     exception = e

@@ -11,6 +11,7 @@ uvicorn = "*"
 pipenv-setup = {ref = "master", git = "https://github.com/Madoshakalaka/pipenv-setup"}
 quart-auth = "*"
 argon2-cffi = "*"
+psutil = "*"
 
 [dev-packages]
 ecorcon = {editable = true, path = "."}
