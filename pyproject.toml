@@ -1,3 +1,6 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+[tool.poetry.scripts]
+dev = "uvicorn src.ecorcon.web:app --reload"
+prod = "python -m ecorcon"

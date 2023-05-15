@@ -24,3 +24,40 @@ You can use this software strictly for restarting your Eco server (or
 just Windows really), or strictly to control an Eco server through 
 remote console, although any game using th minecraft RCON would work 
 too.  
+
+Quickstart
+---
+
+### pipenv
+
+```
+$ pipenv install -e .
+$ pipenv run prod
+```
+
+### poetry
+
+```
+$ poetry install
+$ poetry run prod
+```
+
+### venv / pip
+
+```
+$ python -m venv venv
+$ .\venv\Scripts\activate
+(venv) $ pip install -e .
+(venv) $ python -m ecorcon
+```
+
+That's Windows Power Shell. If Unix second line is:
+
+```
+$ source venv/bin/activate
+```
+
+License
+---
+
+Affero GPLv3. See LICENSE.md
