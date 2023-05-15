@@ -4,21 +4,22 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-mcrcon = "*"
-flask-wtf = "*"
-quart = {extras = ["dotenv"], version = "*"}
-uvicorn = "*"
-pipenv-setup = {ref = "master", git = "https://github.com/Madoshakalaka/pipenv-setup"}
-quart-auth = "*"
 argon2-cffi = "*"
+flask-wtf = "*"
+mcrcon = "*"
 psutil = "*"
+quart = {extras = ["dotenv"], version = "*"}
+quart-auth = "*"
+uvicorn = "*"
+ecorcon = {editable = true, path = "."}
 
 [dev-packages]
-ecorcon = {editable = true, path = "."}
+pipenv-setup = {ref = "master", git = "https://github.com/Madoshakalaka/pipenv-setup"}
 
 [requires]
 python_version = "3.11"
 
 [scripts]
 dev = "uvicorn src.ecorcon.web:app --reload"
+stage = "python -m ecorcon staging"
 prod = "python -m ecorcon"
