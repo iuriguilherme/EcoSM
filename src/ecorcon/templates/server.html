@@ -1,0 +1,54 @@
+{% extends "default_layout.html" %}
+{% block body %}
+<h3>{{ title }}</h3>
+<hr>
+<form action="" method="post">
+<p>
+{{ form.server_field.label }}
+{% for subfield in form.server_field %}
+<div class="form-check form-check-inline">
+{{ subfield(class="form-check-input") }}
+{{ subfield.label(class="form-check-label") }}
+{% if alive[subfield.label.text] %}
+<span class="badge badge-primary">Alive</span>
+{% else %}
+<span class="badge badge-secondary">Dead</span>
+{% endif %}
+</div>
+{% endfor %}
+{% for error in form.server_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>
+{{ form.action_field.label }}
+{% for subfield in form.action_field %}
+<div class="form-check form-check-inline">
+  {{ subfield(class="form-check-input") }}
+  {{ subfield.label(class="form-check-label") }}
+</div>
+{% endfor %}
+{% for error in form.action_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>{{ form.submit(class="btn btn-primary") }}</p>
+</form>
+<hr>
+{% if response %}
+<h3>Last command result:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-warning text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ response }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
+<p>&nbsp;</p>
+{% endblock %}

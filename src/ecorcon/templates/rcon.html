@@ -3,15 +3,26 @@
 <h3>Send command to remote Eco server</h3>
 <hr>
 <form action="" method="post">
-  {% for subfield in form.command_field %}
-    <div class="form-check">
-      {{ subfield(class="form-check-input") }}
-      {{ subfield.label(class="form-check-label") }}
-    </div>
-  {% endfor %}
-  <p>{{ form.arguments_field.label }}<br />{{ form.arguments_field }}
-  </p>
-  <p>{{ form.submit(class="btn btn-danger") }}</p>
+<p>
+{{ form.command_field.label }}
+{% for subfield in form.command_field %}
+  <div class="form-check">
+    {{ subfield(class="form-check-input") }}
+    {{ subfield.label(class="form-check-label") }}
+  </div>
+{% endfor %}
+{% for error in form.command_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>
+{{ form.arguments_field.label }}
+{{ form.arguments_field(class="form-control") }}
+{% for error in form.arguments_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>{{ form.submit(class="btn btn-danger") }}</p>
 </form>
 <hr>
 {% if response %}

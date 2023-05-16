@@ -17,9 +17,7 @@ import asyncio
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from configparser import ConfigParser, NoSectionError
-from datetime import datetime
 from jinja2 import TemplateNotFound
-from multiprocessing import Process
 import logging
 import os
 from quart_auth import (
@@ -32,7 +30,6 @@ from quart_auth import (
   current_user,
 )
 import secrets
-import shutil
 import subprocess
 from subprocess import Popen
 from wtforms import (
@@ -45,9 +42,10 @@ from wtforms import (
   StringField,
   SubmitField,
   TextAreaField,
+  validators,
 )
 from .rcon import get_mcr, get_rcon_commands, rcon_send
-from .manager import (
+from .server import (
   get_path,
   get_subprocess,
   eco_proper_stop,
@@ -55,12 +53,20 @@ from .manager import (
   eco_status,
   eco_start,
   eco_stop,
-  reboot_hard,
-  reboot_soft,
   send_break,
   send_ctrlc,
 )
+from .system import (
+  reboot_hard,
+  reboot_soft,
+)
 from . import name, version
+from .config import (
+  edit_server,
+  edit_user,
+  passwords_file,
+  servers_file,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -68,23 +74,92 @@ app: Quart = Quart(__name__)
 app.secret_key: str = secrets.token_urlsafe(32)
 AuthManager(app)
 
-eco: Popen | None = None
+servers: dict[str, Popen | None] = {}
+try:
+  config: ConfigParser = ConfigParser()
+  config.read(servers_file)
+  for server in config.sections():
+    servers[server] = None
+except Exception as e:
+  logger.exception(e)
 
-# ~ asyncio.get_running_loop().create_task(eco_start(
-  # ~ eco)).result()[1]
+async def start_server(
+  server: Popen | None,
+  server_name: str,
+  *args,
+  **kwargs,
+) -> tuple[bool, Popen, str]:
+  """Starts Eco Server"""
+  try:
+    return await eco_start(server, server_name)
+  except Exception as e:
+    return (False, server, repr(e))
 
 @app.before_serving
-async def startup():
-  # ~ loop = asyncio.get_event_loop()
-  global eco
-  status, eco, message = await eco_start(eco)
-  if not status:
-    logger.warning(message)
+async def startup() -> None:
+  """Startup routine before serving Quart app"""
+  global servers
+  global config
+  try:
+    for server_name in config.sections():
+      if bool(int(config[server_name].get("boot"))):
+        status, server, message = await start(None, server_name)
+        if status:
+          servers[server_name] = server
+  except Exception as e:
+    logger.exception(e)
 
 class LoginForm(FlaskForm):
-  username_field = StringField("Username", default = "Arend")
-  password_field = PasswordField("Password")
+  """Form for login"""
+  username_field = StringField("Username", [
+    validators.DataRequired()], default = "Arend")
+  password_field = PasswordField(
+    "Password",
+    [
+      validators.DataRequired(),
+      validators.EqualTo(
+        "confirm_field",
+        message = "Passwords don't match",
+      ),
+    ]
+  )
+  confirm_field = PasswordField("Password again", [
+    validators.DataRequired()])
   submit = SubmitField("Login")
+
+class RegisterForm(FlaskForm):
+  """Form for register"""
+  username_field = StringField("Username", [
+    validators.DataRequired()], default = "Arend")
+  password_field = PasswordField(
+    "Password",
+    [
+      validators.DataRequired(),
+      validators.EqualTo(
+        "confirm_field",
+        message = "Passwords don't match",
+      ),
+    ]
+  )
+  confirm_field = PasswordField("Password again", [
+    validators.DataRequired()])
+  level_field: RadioField = RadioField(
+    "Permission Level (top inherits lower levels)",
+    [validators.DataRequired()],
+    choices = [
+      ("0", "Root (can interact with all pages"),
+      ("1", "System admin (Can use the Windows Manager page)"),
+      ("2", "Server admin (Can use the Eco Server Manager page)"),
+      ("3", "RCON (Can use the Eco Remote Console page)"),
+      ("4", "Lurker (Can't do anything)"),
+    ],
+  )
+  active_field: RadioField = RadioField(
+    "Account active?",
+    [validators.DataRequired()],
+    choices = [("0", "Inactive"), ("1", "Active")],
+  )
+  submit = SubmitField("Update")
 
 @app.route("/", defaults={"page": "index"})
 @app.route("/<page>")
@@ -95,7 +170,7 @@ async def show(page):
       f"{page}.html",
       name = name,
       version = version,
-      title = page,
+      title = name,
     )
   except TemplateNotFound as e:
     logger.warning(f"Template not found for {page}")
@@ -105,18 +180,24 @@ async def show(page):
     logger.exception(e)
     return jsonify(repr(e))
 
+## TODO: parse arguments in rcon module (for example, validate 
+## arguments separated by comma, get players list with another
+## rcon command, etc.
 @app.route("/rcon", methods = ['GET', 'POST'])
 # ~ @login_required
 async def rcon() -> str:
   """Send RCON Command"""
+  response: str | None = None
   try:
-    class CommandForm(FlaskForm):
+    class RCONForm(FlaskForm):
+      """Remote Console Form"""
       command_field = RadioField(
-        "select command",
+        "Select Command",
+        [validators.DataRequired()],
         choices = [("0", "None")],
       )
       arguments_field = TextAreaField(
-        "command arguments",
+        "Command Arguments (optional)",
         default = "",
       )
       submit = SubmitField("Send")
@@ -127,26 +208,26 @@ async def rcon() -> str:
           field.choices = commands[1]
         else:
           raise Exception(commands[1])
-    response: str | None = None
-    form: FlaskForm = CommandForm(formdata = await request.form)
+    form: FlaskForm = RCONForm(formdata = await request.form)
     await form.validate_command_field(form.command_field)
     if request.method == "POST":
       try:
-        ## TODO: parse arguments in rcon module (for example, validate 
-        ## arguments separated by comma, get players list with another
-        ## rcon command, etc.
-        if form['command_field'].data not in [None, '', ' ']:
+        if form["command_field"].data not in [None, '', ' ']:
           command: tuple = await rcon_send(' '.join([
-            form['command_field'].data,
-            form['arguments_field'].data,
+            form["command_field"].data,
+            form["arguments_field"].data,
           ]))
         else: 
           command: tuple = await rcon_send(
-            form['arguments_field'].data)
+            form["arguments_field"].data)
         response = command[1]
-      except Exception as e:
-        logger.exception(e)
-        return jsonify(repr(e))
+      except Exception as e2:
+        logger.exception(e2)
+        response = repr(e2)
+  except Exception as e1:
+      logger.exception(e1)
+      response = repr(e1)
+  try:
     return await render_template(
       "rcon.html",
       name = name,
@@ -159,64 +240,118 @@ async def rcon() -> str:
     logger.exception(e)
     return jsonify(repr(e))
 
-@app.route("/manager", methods = ['GET', 'POST'])
+@app.route("/server", methods = ['GET', 'POST'])
 # ~ @login_required
-async def manager() -> str:
-  """Manage server process"""
-  global eco
+async def server() -> str:
+  """Manage Eco server"""
+  global servers
+  status: bool = False
+  response: str | None = None
   try:
+    config: ConfigParser = ConfigParser()
+    config.read(servers_file)
     function_map: dict = {
-      "0": eco_status,
-      "1": eco_start,
-      "2": eco_proper_stop,
-      "3": eco_restart,
-      "4": reboot_soft,
-      "5": eco_stop,
-      "6": reboot_hard,
+      "0": ("Eco Server Status", eco_status),
+      "1": ("Start Eco Server", eco_start),
+      "2": ("Stop Eco Server", eco_proper_stop),
+      "3": ("Restart Eco Server", eco_restart),
+      "4": ("Advanced - Force Eco Server Stop", eco_stop),
     }
-    class ManagerForm(FlaskForm):
-      command_field = RadioField(
-        "select command",
-        choices = [
-          ("0", "Eco Server Status"),
-          ("1", "Start Eco Server"),
-          ("2", "Stop Eco Server"),
-          ("3", "Restart Eco Server"),
-          ("4", "Restart Windows Server"),
-          ("5", "Advanced - Force Eco Server Stop"),
-          ("6", "Advanced - Force Windows Restart"),
-        ],
+    class ServerForm(FlaskForm):
+      """Form for server and action selection"""
+      server_field: RadioField = RadioField(
+        "Select Eco Server",
+        [validators.DataRequired()],
+        choices = [("0", "None")],
       )
-      submit = SubmitField("Send")
-    response: str | None = None
-    form: FlaskForm = ManagerForm(formdata = await request.form)
+      action_field: RadioField = RadioField(
+        "Select Action",
+        [validators.DataRequired()],
+        choices = [("0", "None")],
+      )
+      submit: SubmitField = SubmitField("Send")
+      async def validate_server_field(form, field) -> None:
+        """Populate server selection list"""
+        try:
+          field.choices = [(index, server) for index, server in \
+            enumerate(config.sections())]
+        except Exception as e:
+          logger.exception(e)
+      async def validate_action_field(form, field) -> None:
+        """Populate action selection list"""
+        field.choices = [(k, v[0]) for k, v in \
+          sorted(function_map.items())]
+    form: FlaskForm = ServerForm(formdata = await request.form)
+    await form.validate_server_field(form.server_field)
+    await form.validate_action_field(form.action_field)
     if request.method == "POST":
       try:
-        status, eco, response = await function_map[
-          form['command_field'].data](
-            # ~ eco_coroutine,
-            # ~ eco_process,
-            eco,
-          )
+        server_name: str = config.sections()[int(
+          form["server_field"].data)]
+        server: Popen = servers[server_name]
+        status, server, response = await function_map[
+          form["action_field"].data][1](server, server_name)
+        servers[server_name] = server
+      except Exception as e3:
+        logger.exception(e3)
+        status = False
+        response = repr(e3)
+    alive: dict[str, bool] = {}
+    for server_name, server in servers.items():
+      alive[server_name] = False
+      try:
+        alive[server_name] = (server.poll() is None)
+      except (ValueError, AttributeError) as e2:
+        logger.exception(e2)
+      except Exception as e1:
+        logger.exception(e1)
+  except Exception as e:
+    logger.exception(e)
+    status = False
+    response = repr(e)
+  return await render_template(
+    "server.html",
+    name = name,
+    version = version,
+    title = "Eco Server Manager",
+    form = form,
+    response = response,
+    alive = alive,
+  )
+
+@app.route("/system", methods = ['GET', 'POST'])
+# ~ @login_required
+async def system() -> str:
+  """Manage operational system"""
+  status: bool = False
+  response: str | None = None
+  try:
+    function_map: dict = {
+      "0": ("Restart Windows Server", reboot_soft),
+      "1": ("Advanced - Force Windows Restart", reboot_hard),
+    }
+    class SystemForm(FlaskForm):
+      command_field = RadioField(
+        "Select Command",
+        [validators.DataRequired()],
+        choices = [(k, v[0]) for k, v in sorted(function_map.items())],
+      )
+      submit = SubmitField("Send")
+    form: FlaskForm = SystemForm(formdata = await request.form)
+    if request.method == "POST":
+      try:
+        status, response = await function_map[
+          form["command_field"].data][1]()
       except Exception as e:
         logger.exception(e)
         return jsonify(repr(e))
-    alive: bool = False
-    try:
-      alive: bool = (eco.poll() is None)
-    except (ValueError, AttributeError):
-      pass
-    except Exception as e:
-      logger.exception(e)
-      # ~ pass
     return await render_template(
-      "manager.html",
+      "system.html",
       name = name,
       version = version,
-      title = "Server Manager",
+      title = "Windows Manager",
       form = form,
       response = response,
-      alive = alive,
     )
   except Exception as e:
     logger.exception(e)
@@ -248,16 +383,16 @@ up.</p><p><a href='{{url_for("show", page="index")}}'>back</a></p>\
 @app.route("/login", methods = ['GET', 'POST'])
 async def login(*e: Exception) -> str:
   """Login Form"""
-  logger.warning(e)
+  logger.exception(e)
+  response: str | None = None
   try:
-    response: str | None = None
     form: FlaskForm = LoginForm(formdata = await request.form)
     if request.method == "POST":
       try:
         hasher: PasswordHasher = PasswordHasher()
         config: ConfigParser = ConfigParser()
-        config.read(".passwd")
-        user: dict = config[form['username_field'].data]
+        config.read(passwords_file)
+        user: dict = config[form["username_field"].data]
         try:
           hasher.verify(
             user.get("password"),
@@ -265,21 +400,26 @@ async def login(*e: Exception) -> str:
           )
           login_user(AuthUser(user.get("id")))
           if current_user.is_authenticated:
-            response: str = f"""Not sure how you did do done it, but \
+            response = f"""Not sure how you did do done it, but \
 you happened to did supplied the actual password for user \
 {form['username_field'].data}."""
           else:
-            response: str = "Well the password sounds correct but the \
+            response = "Well the password sounds correct but the \
 login still didn't work. Go figure."
-        except VerifyMismatchError as e:
+        except VerifyMismatchError as e5:
+          logger.exception(e5)
           response: str = "y u no give the proper password"
-      except KeyError as e:
-        logger.exception(e)
-        response: str = f"""we haz no such user as \
+      except KeyError as e4:
+        logger.exception(e4)
+        response = f"""we haz no such user as \
 {form['username_field'].data}"""
-      except Exception as e:
-        logger.exception(e)
-        return jsonify(repr(e))
+      except Exception as e3:
+        logger.exception(e3)
+        response = repr(e3)
+  except Exception as e2:
+    logger.exception(e2)
+    response = repr(e2)
+  try:
     return await render_template(
       "login.html",
       name = name,
@@ -288,9 +428,9 @@ login still didn't work. Go figure."
       form = form,
       response = response,
     )
-  except Exception as e:
-    logger.exception(e)
-    return jsonify(repr(e))
+  except Exception as e1:
+    logger.exception(e1)
+    return jsonify(repr(e1))
 
 @app.route("/register", methods = ['GET', 'POST'])
 # ~ @login_required
@@ -298,43 +438,36 @@ async def register() -> str:
   """Register Form"""
   try:
     response: str | None = None
-    form: FlaskForm = LoginForm(formdata = await request.form)
+    form: FlaskForm = RegisterForm(formdata = await request.form)
     if request.method == "POST":
       try:
         hasher: PasswordHasher = PasswordHasher()
-        config: ConfigParser = ConfigParser()
-        pwd_file: str = ".passwd"
-        if not os.path.exists(os.path.dirname(pwd_file)):
-          os.mkdirs(os.path.dirname(pwd_file))  
-        config.read(pwd_file)
-        user: str = form['username_field'].data
-        password: str = hasher.hash(form['password_field'].data)
+        user: str = form["username_field"].data
+        password: str = hasher.hash(form["password_field"].data)
+        level: str = form["level_field"].data
+        active: str = form["active_field"].data
         try:
-          config.set(user, "password", password)
-        except NoSectionError as e:
-          logger.exception(e)
-          user_id: str = str(len(config.sections()))
-          config.add_section(user)
-          config.set(user, "password", password)
-          config.set(user, "id", user_id)
-        try:
-          shutil.copy(pwd_file,
-            f"{pwd_file}.backup.{datetime.utcnow().timestamp()}")
-          with open(pwd_file, "w") as pwd:
-            config.write(pwd)
-          response: str = f"""{form['username_field'].data} password \
-updated. Do try to login."""
-        except Exception as e:
-          logger.exception(e)
-          response: str = f"we messed up: {repr(e)}"
-      except Exception as e:
-        logger.exception(e)
-        return jsonify(repr(e))
+          status, response = await edit_user(
+            form["username_field"].data,
+            hasher.hash(form["password_field"].data),
+            form["level_field"].data,
+            form["active_field"].data,
+          )
+        except Exception as e3:
+          logger.exception(e3)
+          response: str = f"We messed up: {repr(e3)}"
+      except Exception as e2:
+        logger.exception(e2)
+        response: str = f"We messed up: {repr(e2)}"
+  except Exception as e1:
+    logger.exception(e1)
+    response: str = f"We messed up: {repr(e1)}"
+  try:
     return await render_template(
-      "login.html",
+      "register.html",
       name = name,
       version = version,
-      title = "Login",
+      title = "Register",
       form = form,
       response = response,
     )

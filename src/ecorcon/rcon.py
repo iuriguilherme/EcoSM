@@ -3,8 +3,8 @@
 from configparser import ConfigParser
 import logging
 from mcrcon import MCRcon
+from .config import config_file
 
-# ~ logging.basicConfig(level = "INFO")
 logger: logging.Logger = logging.getLogger(__name__)
 
 async def get_mcr(*args, **kwargs) -> MCRcon | None:
@@ -14,10 +14,10 @@ async def get_mcr(*args, **kwargs) -> MCRcon | None:
   password: str = "ididntchangethepassword"
   try:
     config: ConfigParser = ConfigParser()
-    config.read("config.ini")
-    server = config["rcon"]["server"]
-    password = config["rcon"]["password"]
-    port: int(config["rcon"]["port"])
+    config.read(config_file)
+    server = config.get("rcon")["server"]
+    password = config.get("rcon")["password"]
+    port: int(config.get("rcon")["port"])
     mcr: MCRcon = MCRcon(server, password, port = port)
     return mcr
   except Exception as e:
@@ -47,7 +47,7 @@ async def rcon_send(command: str, *args, **kwargs) -> tuple[bool, str]:
   )
 
 async def get_rcon_commands(*args, **kwargs
-) -> tuple[bool, list[tuple] | str]:
+) -> tuple[bool, list[tuple]]:
   """Get RCON Commands"""
   return (True, [
     ("", """<EMPTY COMMAND> (send a RAW Commmand in the arguments \

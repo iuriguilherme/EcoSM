@@ -5,15 +5,18 @@
 <div class="btn-group-vertical" role="group" aria-label="buttons">
   <a class="btn btn-success btn-lg" role="button"
     href="{{ url_for('login') }}">Login &gt;&gt;</a>
-  <a class="btn btn-danger btn-lg" role="button"
+  <a class="btn btn-secondary btn-lg" role="button"
     href="{{ url_for('logout') }}">Logout &gt;&gt;</a>
   <a class="btn btn-primary btn-lg" role="button"
     href="{{ url_for('rcon') }}">Remote Console (RCON) &gt;&gt;</a>
   <a class="btn btn-warning btn-lg" role="button"
-    href="{{ url_for('manager') }}">Server Manager &gt;&gt;</a>
-  <a class="btn btn-secondary btn-lg" role="button"
-    href="{{ url_for('show', page='index') }}"
-  >A button that does nothing at all</a>
+    href="{{ url_for('server') }}">Eco Server Manager &gt;&gt;</a>
+  <a class="btn btn-danger btn-lg" role="button"
+    href="{{ url_for('system') }}">Windows Manager &gt;&gt;</a>
 </div>
 <p>&nbsp;</p>
+<p>Problems with the system? Please <a
+  href="https://github.com/iuriguilherme/ecorcon/issues"
+  target="_blank"
+>report</a>.</p>
 {% endblock %}

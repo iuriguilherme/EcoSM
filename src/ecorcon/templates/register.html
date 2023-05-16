@@ -1,0 +1,71 @@
+{% extends "default_layout.html" %}
+{% block body %}
+<h2>{{ title }}</h2>
+<h3>Edit existing user or register new user</h3>
+<hr>
+<form action="" method="post">
+<p>
+{{ form.username_field.label }}: 
+{{ form.username_field(class="form-control") }}
+{% for error in form.username_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>
+{{ form.password_field.label }}: 
+{{ form.password_field(class="form-control") }}
+{% for error in form.password_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>
+{{ form.confirm_field.label }}: 
+{{ form.confirm_field(class="form-control") }}
+{% for error in form.confirm_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>
+{{ form.level_field.label }}
+{% for subfield in form.level_field %}
+<div class="form-check form-check-inline">
+  {{ subfield(class="form-check-input") }}
+  {{ subfield.label(class="form-check-label") }}
+</div>
+{% endfor %}
+{% for error in form.level_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>
+{{ form.active_field.label }}
+{% for subfield in form.active_field %}
+<div class="form-check form-check-inline">
+  {{ subfield(class="form-check-input") }}
+  {{ subfield.label(class="form-check-label") }}
+</div>
+{% endfor %}
+{% for error in form.active_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>{{ form.submit(class="btn btn-primary") }}</p>
+</form>
+<hr>
+{% if response %}
+<h3>Message from web app:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-warning text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ response }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
+<p>&nbsp;</p>
+{% endblock %}

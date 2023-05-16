@@ -1,5 +1,5 @@
 """
-EcoRCON
+Eco Server Manager and RCON
 
 Copyright 2023 Iuri Guilherme <https://iuri.neocities.org/>
 

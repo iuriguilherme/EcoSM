@@ -7,23 +7,24 @@ import signal
 import subprocess
 from subprocess import Popen
 import sys
+from .config import servers_file
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-def get_path(*args, **kwargs) -> str | None:
+def get_path(server_name: str, *args, **kwargs) -> str | None:
   """Configuration for server manager"""
   try:
     config: ConfigParser = ConfigParser()
-    config.read("config.ini")
-    return config["server"].get("path")
+    config.read(servers_file)
+    return config[server_name].get("path")
   except Exception as e:
     logger.exception(e)
   return None
 
-def get_subprocess(*args, **kwargs) -> None:
+def get_subprocess(server_name: str, *args, **kwargs) -> None:
   """Run subprocess"""
   try:
-    subprocess.run(get_path())
+    subprocess.run(get_path(server_name, *args, **kwargs))
   except Exception as e:
     logger.exception(e)
 
@@ -42,22 +43,6 @@ async def send_signal(
     exception = e
   return (False, eco,
     f"Failed to send signal to server!\n{repr(exception)}")
-
-async def send_system(
-  eco: Popen,
-  command: str,
-  *args,
-  **kwargs,
-) -> tuple[bool, str]:
-  """Send command to Operational System"""
-  exception: Exception | None = None
-  try:
-    return (True, eco, f"Command sent\n{os.system(command)}")
-  except Exception as e:
-    logger.exception(e)
-    exception = e
-  return (False, eco,
-    f"Failed to send command to system!\n{repr(exception)}")
 
 async def eco_status(
   eco: Popen,
@@ -81,6 +66,7 @@ async def eco_status(
 
 async def eco_start(
   eco: Popen,
+  server_name: str,
   *args,
   **kwargs,
 ) -> tuple[bool, Popen, str]:
@@ -88,7 +74,7 @@ async def eco_start(
   exception: Exception | None = None
   try:
     if not (await eco_status(eco, *args, **kwargs))[0]:
-      path: str = get_path()
+      path: str = get_path(server_name, *args, **kwargs)
       if sys.platform.startswith('win32'):
         eco: Popen = Popen(
           [path],
@@ -108,8 +94,7 @@ async def eco_start(
   except Exception as e:
     logger.exception(e)
     exception = e
-  return (False, eco,
-    f"Server is probably already started!\n{repr(exception)}")
+  return (False, eco, f"Could not start server!\n{repr(exception)}")
 
 async def eco_proper_stop(
   eco: Popen,
@@ -202,47 +187,3 @@ async def send_break(
     exception = e
   return (False, eco,
     f"Failed to send signal to server!\n{repr(exception)}")
-
-async def reboot_soft(
-  eco: Popen,
-  *args,
-  **kwargs,
-) -> tuple[bool, Popen, str]:
-  """Send reboot signal with one minute timeout to Operational system"""
-  try:
-      if sys.platform.startswith('win32'):
-        return await send_system(eco, "shutdown /t 60", *args,
-          **kwargs)
-      elif sys.platform.startswith('linux'):
-        return await send_system(eco, "shutdown -r 60", *args,
-          **kwargs)
-      else:
-        return (False, eco,
-          "Couldn't reboot system because I don't know how :(")
-  except Exception as e:
-    logger.exception(e)
-    exception = e
-  return (False, eco,
-    f"Failed to send command to server!\n{repr(exception)}")
-
-async def reboot_hard(
-  eco: Popen,
-  *args,
-  **kwargs,
-) -> tuple[bool, Popen, str]:
-  """Send forceful reboot to Operational system"""
-  try:
-      if sys.platform.startswith('win32'):
-        return await send_system(eco, "shutdown /t 0 /f", *args,
-          **kwargs)
-      elif sys.platform.startswith('linux'):
-        return await send_system(eco, "shutdown -r now", *args,
-          **kwargs)
-      else:
-        return (False, eco,
-          "Couldn't reboot system because I don't know how :(")
-  except Exception as e:
-    logger.exception(e)
-    exception = e
-  return (False, eco,
-    f"Failed to send command to server!\n{repr(exception)}")
