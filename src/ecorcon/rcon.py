@@ -1,5 +1,8 @@
 """Remote Console for Eco https://wiki.play.eco/en/RCON"""
 
+## TODO: Add "password" to the config.py module and use the same server 
+## list for RCON.
+
 from configparser import ConfigParser
 import logging
 from mcrcon import MCRcon

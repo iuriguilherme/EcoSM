@@ -35,14 +35,29 @@
 <p>{{ form.submit(class="btn btn-primary") }}</p>
 </form>
 <hr>
-{% if response %}
+{% if message %}
 <h3>Last command result:</h3>
 <div class="container">
 <div class="row">
 <div class="col">
 <div class="card bg-warning text-dark mb-3 shadow-sm">
 <div class="card-body">
-{{ response }}
+{{ message }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
+{% if exception %}
+<h3>Last error:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-danger text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ exception }}
 </div> <!-- card-body -->
 </div> <!-- card -->
 </div> <!-- col -->

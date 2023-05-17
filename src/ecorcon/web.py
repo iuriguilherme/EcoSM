@@ -46,15 +46,11 @@ from wtforms import (
 )
 from .rcon import get_mcr, get_rcon_commands, rcon_send
 from .server import (
-  get_path,
-  get_subprocess,
-  eco_proper_stop,
-  eco_restart,
-  eco_status,
-  eco_start,
-  eco_stop,
-  send_break,
-  send_ctrlc,
+  server_proper_stop,
+  server_restart,
+  server_status,
+  server_start,
+  server_stop,
 )
 from .system import (
   reboot_hard,
@@ -84,30 +80,27 @@ except Exception as e:
   logger.exception(e)
 
 async def start_server(
-  server: Popen | None,
-  server_name: str,
+  process: Popen | None,
+  _name: str,
   *args,
   **kwargs,
 ) -> tuple[bool, Popen, str]:
   """Starts Eco Server"""
-  try:
-    return await eco_start(server, server_name)
-  except Exception as e:
-    return (False, server, repr(e))
+  return await eco_start(process, _name, *args, **kwargs)
 
 @app.before_serving
 async def startup() -> None:
   """Startup routine before serving Quart app"""
   global servers
   global config
-  try:
-    for server_name in config.sections():
-      if bool(int(config[server_name].get("boot"))):
-        status, server, message = await start(None, server_name)
-        if status:
-          servers[server_name] = server
-  except Exception as e:
-    logger.exception(e)
+  for _name in config.sections():
+    try:
+      if bool(int(config[_name].get("boot"))):
+        _return: dict = await start(None, _name)
+        if _return["status"]:
+          servers[_name] = _return["process"]
+    except Exception as e:
+      logger.exception(e)
 
 class LoginForm(FlaskForm):
   """Form for login"""
@@ -246,16 +239,17 @@ async def server() -> str:
   """Manage Eco server"""
   global servers
   status: bool = False
-  response: str | None = None
+  message: str | None = None
+  exception: Exception | None = None
   try:
     config: ConfigParser = ConfigParser()
     config.read(servers_file)
     function_map: dict = {
-      "0": ("Eco Server Status", eco_status),
-      "1": ("Start Eco Server", eco_start),
-      "2": ("Stop Eco Server", eco_proper_stop),
-      "3": ("Restart Eco Server", eco_restart),
-      "4": ("Advanced - Force Eco Server Stop", eco_stop),
+      "0": ("Eco Server Status", server_status),
+      "1": ("Start Eco Server", server_start),
+      "2": ("Stop Eco Server", server_proper_stop),
+      "3": ("Restart Eco Server", server_restart),
+      "4": ("Advanced - Force Eco Server Stop", server_stop),
     }
     class ServerForm(FlaskForm):
       """Form for server and action selection"""
@@ -275,8 +269,9 @@ async def server() -> str:
         try:
           field.choices = [(index, server) for index, server in \
             enumerate(config.sections())]
-        except Exception as e:
-          logger.exception(e)
+        except Exception as e3:
+          logger.exception(e3)
+          exception = e3
       async def validate_action_field(form, field) -> None:
         """Populate action selection list"""
         field.choices = [(k, v[0]) for k, v in \
@@ -286,38 +281,45 @@ async def server() -> str:
     await form.validate_action_field(form.action_field)
     if request.method == "POST":
       try:
-        server_name: str = config.sections()[int(
+        _name: str = config.sections()[int(
           form["server_field"].data)]
-        server: Popen = servers[server_name]
-        status, server, response = await function_map[
-          form["action_field"].data][1](server, server_name)
-        servers[server_name] = server
-      except Exception as e3:
-        logger.exception(e3)
-        status = False
-        response = repr(e3)
-    alive: dict[str, bool] = {}
-    for server_name, server in servers.items():
-      alive[server_name] = False
-      try:
-        alive[server_name] = (server.poll() is None)
-      except (ValueError, AttributeError) as e2:
+        process: Popen = servers[_name]
+        _return: dict = await function_map[
+          form["action_field"].data][1](process, _name)
+        servers[_name] = _return["process"]
+        message = _return["message"]
+        exception = _return["exception"]
+        status = _return["status"]
+      except Exception as e2:
         logger.exception(e2)
+        exception = e2
+    alive: dict[str, bool] = {}
+    for _name, process in servers.items():
+      alive[_name] = False
+      try:
+        alive[_name] = (process.poll() is None)
+      except (ValueError, AttributeError):
+        pass
       except Exception as e1:
         logger.exception(e1)
   except Exception as e:
     logger.exception(e)
     status = False
-    response = repr(e)
-  return await render_template(
-    "server.html",
-    name = name,
-    version = version,
-    title = "Eco Server Manager",
-    form = form,
-    response = response,
-    alive = alive,
-  )
+    exception = e
+  try:
+    return await render_template(
+      "server.html",
+      name = name,
+      version = version,
+      title = "Eco Server Manager",
+      form = form,
+      message = message,
+      exception = exception,
+      alive = alive,
+    )
+  except Exception as e:
+    logger.exception(e)
+    return jsonify(repr(e))
 
 @app.route("/system", methods = ['GET', 'POST'])
 # ~ @login_required
