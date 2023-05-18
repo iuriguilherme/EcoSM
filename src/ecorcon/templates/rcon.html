@@ -1,5 +1,36 @@
 {% extends "default_layout.html" %}
 {% block body %}
+<h2>{{ title }}</h2>
+{% if message %}
+<h3>Last command result:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-warning text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ message }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
+{% if exception %}
+<h3>Last error:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-danger text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ exception }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
 <h3>Send command to remote Eco server</h3>
 <hr>
 <form action="" method="post">
@@ -24,23 +55,6 @@
 </p>
 <p>{{ form.submit(class="btn btn-danger") }}</p>
 </form>
-<hr>
-{% if response %}
-<h3>Last command result:</h3>
-<div class="container">
-<div class="row">
-<div class="col">
-<div class="card bg-warning text-dark mb-3 shadow-sm">
-<div class="card-body">
-{{ response }}
-</div> <!-- card-body -->
-</div> <!-- card -->
-</div> <!-- col -->
-</div> <!-- row -->
-</div> <!-- container -->
-<hr>
-{% endif %}
-<p>&nbsp;</p>
 <div class="container">
 <div class="row">
 <div class="col">

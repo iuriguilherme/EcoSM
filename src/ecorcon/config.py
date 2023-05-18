@@ -1,4 +1,4 @@
-"""System wide variables"""
+"""Configuration callbacks"""
 
 from configparser import ConfigParser, NoSectionError
 from datetime import datetime
@@ -15,41 +15,46 @@ passwords_file: str = ".passwd"
 async def edit_server(
   name: str,
   path: str,
+  password: str,
   boot: bool,
-  active: bool,
   *args,
   **kwargs,
-) -> tuple[bool, str]:
+) -> dict[str, bool | str | Exception | None]:
   """Edit server config on server configuration file"""
-  exception: str | None = None
+  _return: dict[str, bool | Popen | str | Exception | None] = {
+    "status": False,
+    "message": "Could not edit server configuration!",
+    "exception": None,
+  }
   try:
     config: ConfigParser = ConfigParser()
     if not os.path.exists(os.path.dirname(servers_file)):
       os.makedirs(os.path.dirname(servers_file))
     config.read(servers_file)
     try:
-      config.set(name, "active", str(int(active)))
       config.set(name, "boot", str(int(boot)))
+      config.set(name, "password", password)
       config.set(name, "path", path)
     except NoSectionError as e2:
       logger.exception(e2)
       config.add_section(name)
-      config.set(name, "active", str(int(active)))
       config.set(name, "boot", str(int(boot)))
+      config.set(name, "password", password)
       config.set(name, "path", path)
     try:
       shutil.copy(servers_file,
         f"{servers_file}.backup.{datetime.utcnow().timestamp()}")
       with open(servers_file, "w+") as srv:
         config.write(srv)
-      return (True, f"{name} settings updated.")
+      _return["message"] = f"{name} settings updated."
+      _return["status"] = True
     except Exception as e1:
       logger.exception(e1)
-      exception = e1
+      _return["exception"] = e1
   except Exception as e:
     logger.exception(e)
-    exception = e
-  return (False, f"We messed up: {repr(exception)}")
+    _return["exception"] = e
+  return _return
 
 async def edit_user(
   user: str,
@@ -89,3 +94,17 @@ async def edit_user(
     logger.exception(e)
     exception = e
   return (False, f"We messed up: {repr(exception)}")
+
+async def get_servers(*args, **kwargs) -> dict[str, dict[str, str]]:
+  """Get list of servers"""
+  config: ConfigParser = ConfigParser()
+  config.read(servers_file)
+  return {section:dict(config.items(section)) for section in \
+    config.sections()}
+
+async def get_users(*args, **kwargs) -> dict[str, dict[str, str]]:
+  """Get list of users"""
+  config: ConfigParser = ConfigParser()
+  config.read(passwords_file)
+  return {section:dict(config.items(section)) for section in \
+    config.sections()}

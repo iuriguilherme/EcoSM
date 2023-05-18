@@ -60,6 +60,8 @@ from . import name, version
 from .config import (
   edit_server,
   edit_user,
+  get_servers,
+  get_users,
   passwords_file,
   servers_file,
 )
@@ -140,7 +142,7 @@ class RegisterForm(FlaskForm):
     "Permission Level (top inherits lower levels)",
     [validators.DataRequired()],
     choices = [
-      ("0", "Root (can interact with all pages"),
+      ("0", "Root (can interact with all pages)"),
       ("1", "System admin (Can use the Windows Manager page)"),
       ("2", "Server admin (Can use the Eco Server Manager page)"),
       ("3", "RCON (Can use the Eco Remote Console page)"),
@@ -152,6 +154,32 @@ class RegisterForm(FlaskForm):
     [validators.DataRequired()],
     choices = [("0", "Inactive"), ("1", "Active")],
   )
+  submit = SubmitField("Update")
+
+class ServerForm(FlaskForm):
+  """Form for srver configuration"""
+  name_field = StringField("Alias / server identifier (only letters)", [
+    validators.DataRequired()], default = "greenleaf")
+  path_field = StringField("Server binary path", [
+    validators.DataRequired()], default = "C:\Eco\EcoServer.exe")
+  password_field = PasswordField(
+    "RCON Password (optional)",
+    [
+      validators.EqualTo(
+        "confirm_field",
+        message = "Passwords don't match",
+      ),
+    ]
+  )
+  boot_field: RadioField = RadioField(
+    "Automatic start with this program?",
+    [validators.DataRequired()],
+    choices = [
+      ("0", "NO automatic start"),
+      ("1", "YES automatic start"),
+    ],
+  )
+  confirm_field = PasswordField("RCON Password again")
   submit = SubmitField("Update")
 
 @app.route("/", defaults={"page": "index"})
@@ -439,17 +467,14 @@ login still didn't work. Go figure."
 async def register() -> str:
   """Register Form"""
   try:
-    response: str | None = None
+    users: dict[str, dict[str, str]] = await get_users()
+    message: str | None = None
     form: FlaskForm = RegisterForm(formdata = await request.form)
     if request.method == "POST":
       try:
         hasher: PasswordHasher = PasswordHasher()
-        user: str = form["username_field"].data
-        password: str = hasher.hash(form["password_field"].data)
-        level: str = form["level_field"].data
-        active: str = form["active_field"].data
         try:
-          status, response = await edit_user(
+          status, message = await edit_user(
             form["username_field"].data,
             hasher.hash(form["password_field"].data),
             form["level_field"].data,
@@ -457,13 +482,13 @@ async def register() -> str:
           )
         except Exception as e3:
           logger.exception(e3)
-          response: str = f"We messed up: {repr(e3)}"
+          message = f"We messed up: {repr(e3)}"
       except Exception as e2:
         logger.exception(e2)
-        response: str = f"We messed up: {repr(e2)}"
+        message = f"We messed up: {repr(e2)}"
   except Exception as e1:
     logger.exception(e1)
-    response: str = f"We messed up: {repr(e1)}"
+    message = f"We messed up: {repr(e1)}"
   try:
     return await render_template(
       "register.html",
@@ -471,7 +496,52 @@ async def register() -> str:
       version = version,
       title = "Register",
       form = form,
-      response = response,
+      message = message,
+      users = users,
+    )
+  except Exception as e:
+    logger.exception(e)
+    return jsonify(repr(e))
+
+@app.route("/config", methods = ['GET', 'POST'])
+# ~ @login_required
+async def config_server() -> str:
+  """Route for server configuration"""
+  global servers
+  _servers: dict[str, dict[str, str]] = await get_servers()
+  status: bool = False
+  message: str | None = None
+  exception: Exception | None = None
+  try:
+    form: FlaskForm = ServerForm(formdata = await request.form)
+    if request.method == "POST":
+      try:
+        hasher: PasswordHasher = PasswordHasher()
+        _return = await edit_server(
+          form["name_field"].data,
+          form["path_field"].data,
+          hasher.hash(form["password_field"].data),
+          form["boot_field"].data,
+        )
+        message = _response["message"]
+        exception = _response["exception"]
+        status = _response["status"]
+      except Exception as e2:
+        logger.exception(e2)
+        exception = e2
+  except Exception as e1:
+    logger.exception(e1)
+    exception = e1
+  try:
+    return await render_template(
+      "config.html",
+      name = name,
+      version = version,
+      title = "Edit servers configuration",
+      form = form,
+      message = message,
+      exception = exception,
+      servers = _servers,
     )
   except Exception as e:
     logger.exception(e)
