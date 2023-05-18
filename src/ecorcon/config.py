@@ -44,6 +44,9 @@ async def edit_server(
     try:
       shutil.copy(servers_file,
         f"{servers_file}.backup.{datetime.utcnow().timestamp()}")
+    except FileNotFoundError:
+      pass
+    try:
       with open(servers_file, "w+") as srv:
         config.write(srv)
       _return["message"] = f"{name} settings updated."
@@ -84,6 +87,9 @@ async def edit_user(
     try:
       shutil.copy(passwords_file,
         f"{passwords_file}.backup.{datetime.utcnow().timestamp()}")
+    except FileNotFoundError:
+      pass
+    try:
       with open(passwords_file, "w+") as pwd:
         config.write(pwd)
       return (True, f"{user} credentials updated. Do try to login.")
