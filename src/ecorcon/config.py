@@ -8,9 +8,9 @@ import shutil
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-config_file: str = "config.ini"
-servers_file: str = ".servers"
-passwords_file: str = ".passwd"
+config_file: str = os.path.join("instance", "config.ini")
+servers_file: str = os.path.join("instance", "servers.ini")
+users_file: str = os.path.join("instance", "users.ini")
 
 async def edit_server(
   name: str,
@@ -21,7 +21,7 @@ async def edit_server(
   **kwargs,
 ) -> dict[str, bool | str | Exception | None]:
   """Edit server config on server configuration file"""
-  _return: dict[str, bool | Popen | str | Exception | None] = {
+  _return: dict[str, bool | str | Exception | None] = {
     "status": False,
     "message": "Could not edit server configuration!",
     "exception": None,
@@ -66,12 +66,16 @@ async def edit_user(
   active: bool,
   *args,
   **kwargs,
-) -> tuple[bool, str]:
+) -> dict[str, bool | str | Exception | None]:
   """Add server config to server configuration file"""
-  exception: str | None = None
+  _return: dict[str, bool | str | Exception | None] = {
+    "status": False,
+    "message": "Could not edit user configuration!",
+    "exception": None,
+  }
   try:
     config: ConfigParser = ConfigParser()
-    config.read(passwords_file)
+    config.read(users_file)
     try:
       config.set(user, "password", password)
       config.set(user, "level", level)
@@ -85,21 +89,23 @@ async def edit_user(
       config.set(user, "active", str(int(active)))
       config.set(user, "id", user_id)
     try:
-      shutil.copy(passwords_file,
-        f"{passwords_file}.backup.{datetime.utcnow().timestamp()}")
+      shutil.copy(users_file,
+        f"{users_file}.backup.{datetime.utcnow().timestamp()}")
     except FileNotFoundError:
       pass
     try:
-      with open(passwords_file, "w+") as pwd:
+      with open(users_file, "w+") as pwd:
         config.write(pwd)
-      return (True, f"{user} credentials updated. Do try to login.")
+      _return["message"] = f"""{user} credentials updated. Do try to \
+login."""
+      _return["status"] = True
     except Exception as e1:
       logger.exception(e1)
-      exception = e1
+      _return["exception"] = e1
   except Exception as e:
     logger.exception(e)
-    exception = e
-  return (False, f"We messed up: {repr(exception)}")
+    _return["exception"] = e
+  return _return
 
 async def get_servers(*args, **kwargs) -> dict[str, dict[str, str]]:
   """Get list of servers"""
@@ -111,6 +117,6 @@ async def get_servers(*args, **kwargs) -> dict[str, dict[str, str]]:
 async def get_users(*args, **kwargs) -> dict[str, dict[str, str]]:
   """Get list of users"""
   config: ConfigParser = ConfigParser()
-  config.read(passwords_file)
+  config.read(users_file)
   return {section:dict(config.items(section)) for section in \
     config.sections()}

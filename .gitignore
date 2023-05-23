@@ -155,6 +155,5 @@ Thumbs.db
 *.rdb
 *.sock
 .env
-.passwd*
 Dump/
 Logs/

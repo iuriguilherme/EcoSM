@@ -5,9 +5,17 @@ import logging
 import os
 import psutil
 import signal
+import subprocess
 import sys
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+async def run_subprocess(command: list[str], *args, **kwargs) -> str:
+  """Run subprocess"""
+  try:
+    return subprocess.run([command])
+  except Exception as e:
+    logger.exception(e)
 
 async def send_system(
   command: str,

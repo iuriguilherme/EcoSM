@@ -38,7 +38,13 @@ try:
     app.run()
   else:
     config: ConfigParser = ConfigParser()
-    config.read("config.ini")
+    config_file: str = os.path.join("instance", "config.ini")
+    if not os.path.exists(config_file):
+      logger.warning("""Could not find configuration file, please \
+create directory `instance` and copy example.config.ini to config.ini\
+""")
+      config_file = "example.config.ini"
+    config.read(config_file)
     try:
       uvicorn.run(
         app,

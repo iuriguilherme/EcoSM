@@ -1,0 +1,50 @@
+{% extends "default_layout.html" %}
+{% block body %}
+<h2>{{ title }}</h2>
+{% if message %}
+<h3>Last command result:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-warning text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ message }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
+{% if exception %}
+<h3>Last error:</h3>
+<div class="container">
+<div class="row">
+<div class="col">
+<div class="card bg-danger text-dark mb-3 shadow-sm">
+<div class="card-body">
+{{ exception }}
+</div> <!-- card-body -->
+</div> <!-- card -->
+</div> <!-- col -->
+</div> <!-- row -->
+</div> <!-- container -->
+<hr>
+{% endif %}
+<form action="" method="post">
+<p>
+{{ form.command_field.label }}
+{% for subfield in form.command_field %}
+<div class="form-check form-check-inline">
+  {{ subfield(class="form-check-input") }}
+  {{ subfield.label(class="form-check-label") }}
+</div>
+{% endfor %}
+{% for error in form.command_field.errors %}
+  <span class="badge badge-danger">[{{ error }}]</span>
+{% endfor %}
+</p>
+<p>{{ form.submit(class="btn btn-primary") }}</p>
+</form>
+<p>&nbsp;</p>
+{% endblock %}

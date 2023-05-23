@@ -44,7 +44,23 @@ from wtforms import (
   TextAreaField,
   validators,
 )
+from . import name, version
+from .config import (
+  edit_server,
+  edit_user,
+  get_servers,
+  get_users,
+  users_file,
+  servers_file,
+)
 from .rcon import get_mcr, get_rcon_commands, rcon_send
+from .script import (
+  update_git,
+  update_pipenv,
+  update_reinstall,
+  update_restart,
+  update_venv,
+)
 from .server import (
   server_proper_stop,
   server_restart,
@@ -55,15 +71,6 @@ from .server import (
 from .system import (
   reboot_hard,
   reboot_soft,
-)
-from . import name, version
-from .config import (
-  edit_server,
-  edit_user,
-  get_servers,
-  get_users,
-  passwords_file,
-  servers_file,
 )
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -157,8 +164,8 @@ class RegisterForm(FlaskForm):
   submit = SubmitField("Update")
 
 class ServerForm(FlaskForm):
-  """Form for srver configuration"""
-  name_field = StringField("Alias / server identifier (only letters)", [
+  """Form for server configuration"""
+  name_field = StringField("Alias / server identifier (no spaces)", [
     validators.DataRequired()], default = "greenleaf")
   path_field = StringField("Server binary path", [
     validators.DataRequired()], default = "C:\Eco\EcoServer.exe")
@@ -332,7 +339,6 @@ async def server() -> str:
         logger.exception(e1)
   except Exception as e:
     logger.exception(e)
-    status = False
     exception = e
   try:
     return await render_template(
@@ -354,13 +360,15 @@ async def server() -> str:
 async def system() -> str:
   """Manage operational system"""
   status: bool = False
-  response: str | None = None
+  message: str | None = None
+  exception: Exception | None = None
   try:
     function_map: dict = {
       "0": ("Restart Windows Server", reboot_soft),
       "1": ("Advanced - Force Windows Restart", reboot_hard),
     }
     class SystemForm(FlaskForm):
+      """Form for system management"""
       command_field = RadioField(
         "Select Command",
         [validators.DataRequired()],
@@ -370,44 +378,88 @@ async def system() -> str:
     form: FlaskForm = SystemForm(formdata = await request.form)
     if request.method == "POST":
       try:
-        status, response = await function_map[
+        _return = await function_map[
           form["command_field"].data][1]()
-      except Exception as e:
-        logger.exception(e)
-        return jsonify(repr(e))
+        message = _return[1]
+        status = _return[0]
+      except Exception as e2:
+        logger.exception(e2)
+        exception = e2
+  except Exception as e1:
+    logger.exception(e1)
+    exception = e1
+  try:
     return await render_template(
       "system.html",
       name = name,
       version = version,
       title = "Windows Manager",
       form = form,
-      response = response,
+      message = message,
+      exception = exception,
     )
   except Exception as e:
     logger.exception(e)
     return jsonify(repr(e))
 
-@app.route("/logout")
-async def logout() -> str:
-  """Logout route"""
+@app.route("/script", methods = ['GET', 'POST'])
+# ~ @login_required
+async def script() -> str:
+  """Manage this Quart program"""
+  status: bool = False
+  message: str | None = None
+  exception: Exception | None = None
   try:
-    while (await current_user.is_authenticated):
-      logout_user()
-    return await render_template_string("""<p>BYE</p>\
-<p><a href='{{url_for("show", page="index")}}'>back</a></p>""")
+    function_map: dict = {
+      "0": ("Update Venv", update_venv),
+      "1": ("Update Pipenv", update_pipenv),
+      "3": ("Update version using git", update_git),
+      "4": (
+        "Reinstall this script (remember to update after)",
+        update_reinstall,
+      ),
+      "5": ("Restart this script (after update)", update_restart),
+    }
+    class ScriptForm(FlaskForm):
+      """Form for script management"""
+      command_field: RadioField = RadioField(
+        "Select Command",
+        [validators.DataRequired()],
+        choices = [("0", "None")],
+      )
+      submit: SubmitField = SubmitField("Send")
+      async def validate_command_field(form, field) -> None:
+        """Populate command selection list"""
+        field.choices = [(k, v[0]) for k, v in \
+          sorted(function_map.items())]
+    form: FlaskForm = ScriptForm(formdata = await request.form)
+    await form.validate_command_field(form.command_field)
+    if request.method == "POST":
+      try:
+        _return: dict = await function_map[
+          form["command_field"].data][1]()
+        message = _return["message"]
+        exception = _return["exception"]
+        status = _return["status"]
+      except Exception as e1:
+        logger.exception(e1)
+        exception = e1
   except Exception as e:
+    logger.exception(e)
+    exception = e
+  try:
+    return await render_template(
+      "script.html",
+      name = name,
+      version = version,
+      title = "Script Manager",
+      form = form,
+      message = message,
+      exception = exception,
+    )
+  except Exception as e:
+    logger.exception(e)
     return jsonify(repr(e))
-
-@app.errorhandler(TemplateNotFound)
-@app.errorhandler(404)
-@app.route("/not_found")
-async def not_found(*e: Exception) -> str:
-  """404"""
-  logger.warning(e)
-  return await render_template_string("""<p>Someone probably sent you \
-the wrong link on purpose, but there's a tiny chance that you messed \
-up.</p><p><a href='{{url_for("show", page="index")}}'>back</a></p>\
-"""), 404
 
 @app.errorhandler(Unauthorized)
 @app.route("/login", methods = ['GET', 'POST'])
@@ -421,7 +473,7 @@ async def login(*e: Exception) -> str:
       try:
         hasher: PasswordHasher = PasswordHasher()
         config: ConfigParser = ConfigParser()
-        config.read(passwords_file)
+        config.read(users_file)
         user: dict = config[form["username_field"].data]
         try:
           hasher.verify(
@@ -469,26 +521,33 @@ async def register() -> str:
   try:
     users: dict[str, dict[str, str]] = await get_users()
     message: str | None = None
+    exception: Exception | None = None
     form: FlaskForm = RegisterForm(formdata = await request.form)
     if request.method == "POST":
       try:
         hasher: PasswordHasher = PasswordHasher()
         try:
-          status, message = await edit_user(
+          _return = await edit_user(
             form["username_field"].data,
             hasher.hash(form["password_field"].data),
             form["level_field"].data,
             form["active_field"].data,
           )
+          status = _return["status"]
+          message = _return["message"]
+          exception = _return["exception"]
         except Exception as e3:
           logger.exception(e3)
-          message = f"We messed up: {repr(e3)}"
+          message = "We messed up"
+          exception = e3
       except Exception as e2:
         logger.exception(e2)
-        message = f"We messed up: {repr(e2)}"
+        message = "We messed up"
+        exception = e2
   except Exception as e1:
     logger.exception(e1)
-    message = f"We messed up: {repr(e1)}"
+    message = "We messed up"
+    exception = e1
   try:
     return await render_template(
       "register.html",
@@ -497,6 +556,7 @@ async def register() -> str:
       title = "Register",
       form = form,
       message = message,
+      exception = exception,
       users = users,
     )
   except Exception as e:
@@ -523,9 +583,9 @@ async def config_server() -> str:
           hasher.hash(form["password_field"].data),
           form["boot_field"].data,
         )
-        message = _response["message"]
-        exception = _response["exception"]
-        status = _response["status"]
+        message = _return["message"]
+        exception = _return["exception"]
+        status = _return["status"]
       except Exception as e2:
         logger.exception(e2)
         exception = e2
@@ -546,6 +606,28 @@ async def config_server() -> str:
   except Exception as e:
     logger.exception(e)
     return jsonify(repr(e))
+
+@app.route("/logout")
+async def logout() -> str:
+  """Logout route"""
+  try:
+    while (await current_user.is_authenticated):
+      logout_user()
+    return await render_template_string("""<p>BYE</p>\
+<p><a href='{{url_for("show", page="index")}}'>back</a></p>""")
+  except Exception as e:
+    return jsonify(repr(e))
+
+@app.errorhandler(TemplateNotFound)
+@app.errorhandler(404)
+@app.route("/not_found")
+async def not_found(*e: Exception) -> str:
+  """404"""
+  logger.warning(e)
+  return await render_template_string("""<p>Someone probably sent you \
+the wrong link on purpose, but there's a tiny chance that you messed \
+up.</p><p><a href='{{url_for("show", page="index")}}'>back</a></p>\
+"""), 404
 
 def run() -> None:
   """Blocking default Quart run"""

@@ -28,12 +28,12 @@ too.
 Quickstart
 ---
 
-First of all, copy the file example.config.ini to config.ini and 
-edit it to your needs. This program will run in the TCP port specified 
-at the **uvicorn** section. In the **rcon** section, those are the 
-RCON configurations you must make in the Eco server, and use the same 
-values here. The **server** section has the path for your EcoServer.exe 
-program.  
+First of all, copy the file example.config.ini to 
+**instance/config.ini** and edit it to your needs. This program will 
+run in the TCP port specified at the **uvicorn** section. In the 
+**rcon** section, those are the RCON configurations you must make in 
+the Eco server, and use the same values here. The **server** section 
+has the path for your EcoServer.exe program.  
 
 This script by default will start the EcoServer.exe configured, so you 
 can run it in the system boot to bring up both.  

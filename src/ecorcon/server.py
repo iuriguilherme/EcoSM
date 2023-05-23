@@ -4,7 +4,6 @@ from configparser import ConfigParser
 import logging
 import os
 import signal
-import subprocess
 from subprocess import Popen
 import sys
 from .config import servers_file
@@ -20,13 +19,6 @@ async def get_path(server_name: str, *args, **kwargs) -> str | None:
   except Exception as e:
     logger.exception(e)
   return None
-
-async def run_subprocess(server_name: str, *args, **kwargs) -> None:
-  """Run subprocess"""
-  try:
-    subprocess.run(await get_path(server_name, *args, **kwargs))
-  except Exception as e:
-    logger.exception(e)
 
 async def send_signal(
   process: Popen,
