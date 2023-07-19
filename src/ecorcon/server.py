@@ -4,6 +4,7 @@ from configparser import ConfigParser
 import logging
 import os
 import signal
+import subprocess
 from subprocess import Popen
 import sys
 from .config import servers_file

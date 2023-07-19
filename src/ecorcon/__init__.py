@@ -28,7 +28,7 @@ version: str = '0.0.0'
 __name__: str = name
 
 logging.basicConfig(level = "INFO")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(name)
 
 try:
   from . import _version

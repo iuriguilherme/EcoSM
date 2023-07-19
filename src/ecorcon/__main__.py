@@ -26,8 +26,9 @@ import os
 import sys
 import uvicorn
 from .web import app
+from . import name
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(name)
 
 try:
   if (len(sys.argv) > 1 and sys.argv[1] in \

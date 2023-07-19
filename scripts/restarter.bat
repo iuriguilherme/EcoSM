@@ -1,2 +1,2 @@
 @echo "Windows auto restarter for ecorcon"
-python.exe auto-restart.py
+python.exe scripts\auto-restart.py

@@ -16,7 +16,8 @@ while True:
   path: Path = Path.cwd()
   try:
     config: ConfigParser = ConfigParser()
-    config.read(os.path.join(path.parents[0], "instance", "config.ini"))
+    # ~ config.read(os.path.join(path.parents[0], "instance", "config.ini"))
+    config.read(os.path.join("instance", "config.ini"))
     method = config["script"]["method"]
   except Exception as e:
     logger.exception(e)
@@ -24,8 +25,9 @@ while True:
 sure instance/config.ini exists. Use example.config.ini""")
   try:
     proc: Popen = Popen(
-      os.path.join(path, f"start-{method}.bat"),
-      cwd = path.parents[0],
+      os.path.join(path, "scripts", f"start-{method}.bat"),
+      # ~ cwd = path.parents[0],
+      cwd = path,
       creationflags = subprocess.CREATE_NEW_PROCESS_GROUP,
     )
     proc.communicate()
