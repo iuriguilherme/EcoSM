@@ -79,12 +79,27 @@ app: Quart = Quart(__name__)
 app.secret_key: str = secrets.token_urlsafe(32)
 AuthManager(app)
 
+def populate_servers(
+  servers: dict,
+  config: ConfigParser,
+  config_file: str,
+  *args,
+  **kwargs,
+) -> dict:
+  """Adds servers from config file's keys"""
+  try:
+    config.read(config_file)
+    for server in config.sections():
+      if server not in servers:
+        servers[server] = None
+  except Exception as e:
+    logger.exception(e)
+  return servers
+
 servers: dict[str, Popen | None] = {}
 try:
   config: ConfigParser = ConfigParser()
-  config.read(servers_file)
-  for server in config.sections():
-    servers[server] = None
+  servers = populate_servers(servers, config, servers_file)
 except Exception as e:
   logger.exception(e)
 
@@ -105,7 +120,7 @@ async def startup() -> None:
   for _name in config.sections():
     try:
       if bool(int(config[_name].get("boot"))):
-        _return: dict = await start(None, _name)
+        _return: dict = await start_server(None, _name)
         if _return["status"]:
           servers[_name] = _return["process"]
     except Exception as e:
@@ -568,6 +583,7 @@ async def register() -> str:
 async def config_server() -> str:
   """Route for server configuration"""
   global servers
+  global config
   _servers: dict[str, dict[str, str]] = await get_servers()
   status: bool = False
   message: str | None = None
@@ -583,6 +599,7 @@ async def config_server() -> str:
           hasher.hash(form["password_field"].data),
           form["boot_field"].data,
         )
+        servers = populate_servers(servers, config, servers_file)
         message = _return["message"]
         exception = _return["exception"]
         status = _return["status"]

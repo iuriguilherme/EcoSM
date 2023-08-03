@@ -36,7 +36,7 @@ async def edit_server(
       config.set(name, "password", password)
       config.set(name, "path", path)
     except NoSectionError as e2:
-      logger.exception(e2)
+      # ~ logger.exception(e2)
       config.add_section(name)
       config.set(name, "boot", str(int(boot)))
       config.set(name, "password", password)
