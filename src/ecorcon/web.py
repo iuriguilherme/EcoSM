@@ -110,7 +110,7 @@ async def start_server(
   **kwargs,
 ) -> tuple[bool, Popen, str]:
   """Starts Eco Server"""
-  return await eco_start(process, _name, *args, **kwargs)
+  return await start_server(process, _name, *args, **kwargs)
 
 @app.before_serving
 async def startup() -> None:
