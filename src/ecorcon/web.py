@@ -65,7 +65,7 @@ from .server import (
   server_proper_stop,
   server_restart,
   server_status,
-  server_start,
+  server_start as eco_server_start,
   server_stop,
 )
 from .system import (
@@ -110,7 +110,7 @@ async def start_server(
   **kwargs,
 ) -> tuple[bool, Popen, str]:
   """Starts Eco Server"""
-  return await start_server(process, _name, *args, **kwargs)
+  return await eco_server_start(process, _name, *args, **kwargs)
 
 @app.before_serving
 async def startup() -> None:
