@@ -292,12 +292,13 @@ async def server() -> str:
   message: str | None = None
   exception: Exception | None = None
   form: FlaskForm | None = None
+  alive: dict[str, bool] = {}
   try:
     config: ConfigParser = ConfigParser()
     config.read(servers_file)
     function_map: dict = {
       "0": ("Eco Server Status", server_status),
-      "1": ("Start Eco Server", server_start),
+      "1": ("Start Eco Server", eco_server_start),
       "2": ("Stop Eco Server", server_proper_stop),
       "3": ("Restart Eco Server", server_restart),
       "4": ("Advanced - Force Eco Server Stop", server_stop),
@@ -344,7 +345,6 @@ async def server() -> str:
       except Exception as e2:
         logger.exception(e2)
         exception = e2
-    alive: dict[str, bool] = {}
     for _name, process in servers.items():
       alive[_name] = False
       try:
