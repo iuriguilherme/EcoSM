@@ -291,6 +291,7 @@ async def server() -> str:
   status: bool = False
   message: str | None = None
   exception: Exception | None = None
+  form: FlaskForm | None = None
   try:
     config: ConfigParser = ConfigParser()
     config.read(servers_file)
@@ -326,7 +327,7 @@ async def server() -> str:
         """Populate action selection list"""
         field.choices = [(k, v[0]) for k, v in \
           sorted(function_map.items())]
-    form: FlaskForm = ServerForm(formdata = await request.form)
+    form = ServerForm(formdata = await request.form)
     await form.validate_server_field(form.server_field)
     await form.validate_action_field(form.action_field)
     if request.method == "POST":
